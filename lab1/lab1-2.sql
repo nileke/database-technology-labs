@@ -1,0 +1,118 @@
+/** 1. Create a view that contains isbn and title of all the books in the database. Then
+query it to list all the titles and
+A: You often want to match isbn with a title, this way you can call this view instead 
+of creating subqueries every time  */
+
+DROP VIEW IF EXISTS books_isbn;
+
+CREATE VIEW books_isbn AS 
+SELECT
+	isbn,
+	title
+FROM editions
+JOIN books ON books.book_id=editions.book_id;
+
+DROP VIEW books_isbn;
+
+
+
+/** 2. Try to insert into editions a new tuple ('5555', 12345, 1, 59, '2012-12-02'). Explain
+what happened.
+A: Fails as there is no record of the book_id in books, which needs to exist before inserting into editions 
+book_id is a FOREIGN KEY which REFERENCE books(book_id) in table editions the CONSTRAINT of editions 
+needs this FOREIGN KEY to be present in books in order to be able to add it */ 
+
+INSERT INTO editions (isbn, book_id, edition, publisher_id, publication_date)
+VALUES ('5555', 12345, 1, 59, '2012-12-02');
+
+/** 3. Try to insert into editions
+a new tuple only setting its isbn='5555'. Explain what
+happened.
+A: Can't insert as row contains null values for all other attributes and there is a constraint
+not allowing this. book_id and edition can't be null according to the integrity constraint in relation 
+editions */
+
+INSERT INTO editions (isbn) VALUES ('5555');
+
+ 
+
+/** 4. Try to first insert a book with (book_id, title) of (12345, 'How I Insert') then
+One into editions as in 2. Show that this worked by making an appropriate query of the
+database. Why do we not need an author or subject? 
+A: There is no FOREIGN KEY for those relations */
+
+INSERT INTO books (book_id, title) VALUES (12345, 'How I Insert');
+INSERT INTO editions (isbn, book_id, edition, publisher_id, publication_date) 
+VALUES ('5555', 12345, 1, 59, '2012-12-02');
+
+
+
+SELECT
+	title,
+	books.book_id,
+	subject_id,
+	edition,
+	publication_date
+FROM books, editions WHERE books.book_id=editions.book_id AND books.book_id=12345;
+
+
+/** 5. Update the new book by setting the subject to ‘Mystery’. */
+
+UPDATE books SET
+subject_id = (SELECT subject_id FROM subjects WHERE subject='Mystery')
+WHERE books.book_id=12345;
+
+SELECT * FROM books WHERE book_id=12345; 
+
+
+
+/** 6. Try to delete the new tuple from books. Explain what happens. 
+A: Since our book is referenced in editions on KEY (book_id) so we can't delete it. 
+We need to delete it from editions first. */
+
+DELETE FROM books WHERE book_id=12345;
+
+
+/** 7. Delete both new tuples from step 4 and query the database to confirm. */
+
+DELETE FROM editions WHERE book_id=12345;
+DELETE FROM books WHERE book_id=12345;
+
+SELECT * FROM books WHERE book_id=12345;
+SELECT * FROM editions WHERE book_id=12345;
+
+
+/** 8. Now insert a book with (book_id, title, subject_id ) of (12345, 'How I Insert', 3443).
+Explain what happened. 
+A: The subject_id is not present in relation subjects. subject_id is a FOREIGN KEY for books. */
+
+INSERT INTO books (book_id, title, subject_id)
+VALUES (12345, 'How I insert', 3443);
+
+
+/** 9. Create a constraint, called ‘hasSubject’ that forces the subject_id to not be NULL
+and to match one in the subjects table. (HINT you might want to look at chap.
+6.1.6 on testing NULL). Show that you can still insert an book with no author_id
+but not without a subject_id. Now remove the new constraint and any added
+books.*/
+
+ALTER TABLE books ADD CONSTRAINT hasSubject CHECK(subject_id is NOT NULL);
+
+INSERT INTO books (title, book_id) VALUES ('My book', 12345);
+INSERT INTO books (title, book_id, subject_id) VALUES ('My book', 12345, 10);
+DELETE FROM books WHERE book_id=12345;
+
+ALTER TABLE books DROP CONSTRAINT hasSubject;
+
+/** Tables
+PGPASSWORD=UKZTM5nD psql -h nestor2.csc.kth.se < lab1.sql -U nilsek
+
+books((book_id), title, author_id, subject_id)
+publishers((publisher_id), name, address)
+authors((author_id), last_name, first_name)
+stock((isbn), cost, retail_price, stock)
+shipments((shipment_id), customer_id, isbn, ship_date)
+customers((customer_id), last_name, first_name)
+editions((isbn), book_id, edition, publisher_id, publication_date)
+subjects((subject_id), subject, location)
+*/
